@@ -3,10 +3,10 @@ name: Libfstcpp Regression Test
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   regression:
@@ -15,29 +15,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential ninja-build libgtest-dev lcov
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtest-dev lcov
 
       - name: Run tests
         run: ./run_regression.sh --coverage
-
-      - name: Comment Link on Commit
-        if: false
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-
-          if [ "${{ job.status }}" == "success" ]; then
-            ICON="✅"
-          else
-            ICON="❌"
-          fi
-
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            /repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments \
-            -f body="$ICON **Regression Report:** [Click Here to View Summary]($URL)"

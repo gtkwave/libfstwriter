@@ -1,4 +1,5 @@
-
+// SPDX-FileCopyrightText: 2025 Yu-Sheng Lin <johnjohnlys@gmail.com>
+// SPDX-License-Identifier: MIT
 module Simple (
   // input
   input clk,

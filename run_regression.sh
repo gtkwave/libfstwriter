@@ -6,7 +6,7 @@
 # --coverage, default to false
 # --coverage-html, default to false, autoset --coverage to true
 # --coverage-line, default to 70
-# --coverage-func, default to 73
+# --coverage-func, default to 70
 BUILD_DIR="build/regression"
 COVERAGE=0
 COVERAGE_HTML=0

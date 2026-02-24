@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2025 Yoda Lee <lc85301@gmail.com>
+// SPDX-License-Identifier: MIT
 module Pipeline (
     input clk,
     input rst_n,

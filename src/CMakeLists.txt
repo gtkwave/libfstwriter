@@ -100,13 +100,13 @@ foreach(TEST_PATH ${TEST_PATHS})
         # C executable
         add_executable(${TEST_NAME}_c ${TEST_SRCS} gtkwave/fstapi.c $<TARGET_OBJECTS:verilator_shared>)
         target_link_libraries(${TEST_NAME}_c PRIVATE fstcpp)
-        target_include_directories(${TEST_NAME}_c PRIVATE ${TEST_PATH}/compiled)
+        target_include_directories(${TEST_NAME}_c PRIVATE ${TEST_PATH}/verilated)
         add_test(NAME ${TEST_NAME}_c COMMAND ${TEST_NAME}_c ${TEST_NAME}_dump_c.fst)
 
         # C++ executable
         add_executable(${TEST_NAME}_cpp ${TEST_SRCS} gtkwave/fstapi.cpp $<TARGET_OBJECTS:verilator_shared>)
         target_link_libraries(${TEST_NAME}_cpp PRIVATE fstcpp)
-        target_include_directories(${TEST_NAME}_cpp PRIVATE ${TEST_PATH}/compiled)
+        target_include_directories(${TEST_NAME}_cpp PRIVATE ${TEST_PATH}/verilated)
         add_test(NAME ${TEST_NAME}_cpp COMMAND ${TEST_NAME}_cpp ${TEST_NAME}_dump_cpp.fst)
 
         # must be bit-true

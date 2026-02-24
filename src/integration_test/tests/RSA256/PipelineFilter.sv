@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2025 Yoda Lee <lc85301@gmail.com>
+// SPDX-License-Identifier: MIT
 module PipelineFilter (
     input i_valid,
     output logic i_ready,
