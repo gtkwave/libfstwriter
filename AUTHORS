@@ -1,9 +1,10 @@
-# This is the list of Abseil authors for copyright purposes.
+# This is the official list of authors and contributors for libfstwriter.
 #
-# This does not necessarily list everyone who has contributed code, since in
-# some cases, their employer may be the copyright holder.  To see the full list
-# of contributors, see the revision history in source control.
+# To see the full list of contributors and their exact contributions,
+# please refer to the revision history in source control (e.g., git log).
+#
+# Format: Name <Email> (optional)
 
-Yu-Sheng Lin
-You-Tang Lee
+Yu-Sheng Lin <johnjohnlys@gmail.com>
+Yoda Lee <lc85301@gmail.com>
 rfuest

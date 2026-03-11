@@ -32,6 +32,7 @@ static inline string_view_pair make_string_view_pair(const char *data) {
 	}
 	return {data, std::strlen(data)};
 }
+
 [[maybe_unused]]
 static inline string_view_pair make_string_view_pair(const char *data, std::size_t size) {
 	return {data, size};
@@ -57,10 +58,12 @@ enum class EncodingType : uint8_t {
 	VERILOG = 1,  // 2 bits per bit to represent X,Z
 	VHDL = 2,     // 4 bits per bit to represent H,U,W,L,-,?
 };
+
 [[maybe_unused]]
 static inline constexpr unsigned bitPerEncodedBit(EncodingType type) {
 	return 1 << static_cast<uint8_t>(type);
 }
+
 [[maybe_unused]]
 static const char* kEncodedBitToCharTable = (
 	"01" // Binary
@@ -92,6 +95,7 @@ struct Hierarchy {
 		VHDL_IFGENERATE = 19,
 		VHDL_GENERATE = 20,
 		VHDL_PACKAGE = 21,
+		SV_ARRAY = 22,
 	};
 
 	enum class ScopeControlType : uint8_t {
