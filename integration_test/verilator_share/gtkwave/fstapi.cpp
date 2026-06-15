@@ -35,8 +35,7 @@ static inline void NotImplementedWarning(const char *func_name) {
 
 [[maybe_unused]]
 static inline void TODO(const char *func_name) {
-	cerr << string(func_name) + " is a TODO" << endl;
-	throw runtime_error("TODO");
+	FST_FAIL_STRING(string(func_name) + " is a TODO");
 }
 
 // File open/close
