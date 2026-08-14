@@ -107,6 +107,48 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_10bit_Binary) {
 	);
 }
 
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_1bit_Verilog) {
+	VariableInfo vi{1};
+	uint32_t val0[2] = {0, 0};  // 0 -> '0'
+	uint32_t val1[2] = {1, 0};  // 1 -> '1'
+	uint32_t valX[2] = {0, 1};  // 2 -> 'X'
+	uint32_t valZ[2] = {1, 1};  // 3 -> 'Z'
+
+	vi.emitValueChange(1, val0, fst::EncodingType::VERILOG);
+	vi.emitValueChange(2, val1, fst::EncodingType::VERILOG);
+	vi.emitValueChange(3, valX, fst::EncodingType::VERILOG);
+	vi.emitValueChange(4, valZ, fst::EncodingType::VERILOG);
+
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+
+	// Expected LEB128 encodings:
+	// '0' (val=0): delta<<2 | (0<<1) | 0 -> (1<<2) | 0 = 4  (\x04)
+	// '1' (val=1): delta<<2 | (1<<1) | 0 -> (1<<2) | 2 = 6  (\x06)
+	// 'X' (val=2): delta<<4 | (0<<1) | 1 -> (1<<4) | 1 = 17 (\x11)
+	// 'Z' (val=3): delta<<4 | (1<<1) | 1 -> (1<<4) | 3 = 19 (\x13)
+	EXPECT_EQ(V2S(buf), "\x04\x06\x11\x13"s);
+}
+
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_10bit_Verilog) {
+	VariableInfo vi{10};
+
+	uint32_t val10_xz[2];
+	val10_xz[0] = 0b1010101010;                                   // Low bits (b0)
+	val10_xz[1] = 0b1111100000;                                   // High bits (b1)
+	vi.emitValueChange(1, val10_xz, fst::EncodingType::VERILOG);  // delta = 1
+
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+
+	// Expected encoding:
+	// delta = 1 - 0 = 1.
+	// has_non_binary = 1 (VERILOG encoding for bitwidth > 1).
+	// LEB128( (1 << 1) | 1 ) = LEB128(3) = \x03
+	// Then the characters are written literally into the stream: "zxzxz01010"
+	EXPECT_EQ(V2S(buf), "\x03zxzxz01010"s);
+}
+
 TEST(VariableInfoTest, dumpValueChange_LongInt_Binary) {
 	VariableInfo vi{68};
 	vi.emitValueChange(2, 0);

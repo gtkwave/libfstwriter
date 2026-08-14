@@ -424,8 +424,7 @@ public:
 	void emitValueChange(uint64_t current_time_index, const uint32_t *val, EncodingType encoding) {
 		auto wh = emitValueChangeCommonPart(current_time_index, encoding);
 		for (unsigned i = 0; i < bitPerEncodedBit(encoding); ++i) {
-			// C++17: replace this with if constexpr
-			if (sizeof(T) == 8) {
+			if (info.bitwidth() > 32) {
 				uint64_t v = val[1];  // high bits
 				v <<= 32;
 				v |= val[0];  // low bits
@@ -517,7 +516,7 @@ public:
 				} else {
 					unsigned val = 0;
 					for (unsigned i = 0; i < num_element; ++i) {
-						val |= rh.peek<T>(i);
+						val |= rh.peek<T>(i) << i;
 					}
 					uint64_t delta_time_index = time_index - prev_time_index;
 					prev_time_index = time_index;
@@ -556,13 +555,30 @@ public:
 				if (first) {
 					first = false;
 				} else {
-					FST_CHECK(enc == EncodingType::BINARY);  // TODO
 					const bool has_non_binary = enc != EncodingType::BINARY;
 					const uint64_t delta_time_index = time_index - prev_time_index;
 					prev_time_index = time_index;
-					h  //
-						.writeLEB128((delta_time_index << 1) | has_non_binary)
-						.writeUIntPartialForValueChange(rh.peek<T>(), bitwidth);
+					h.writeLEB128((delta_time_index << 1) | has_non_binary);
+
+					if (has_non_binary) {
+						if (enc == EncodingType::VERILOG) {
+							auto v0 = rh.peek<T>(0);
+							auto v1 = rh.peek<T>(1);
+							for (unsigned i = bitwidth; i-- > 0;) {
+								const T b1 = ((v1 >> i) & T(1));
+								const T b0 = ((v0 >> i) & T(1));
+								const char c = kEncodedBitToCharTable[(b1 << 1) | b0];
+								h.write(c);
+							}
+						} else {
+							// VHDL not supported yet
+							for (unsigned i = bitwidth; i-- > 0;) {
+								h.write('0');
+							}
+						}
+					} else {
+						h.writeUIntPartialForValueChange(rh.peek<T>(), bitwidth);
+					}
 				}
 				rh.skip(num_byte);
 			}
