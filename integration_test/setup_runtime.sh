@@ -31,17 +31,19 @@ cp -r "$SOURCE_DIR"/*.cpp "$SOURCE_DIR"/*.h "$SOURCE_DIR"/vltstd "$VERILATOR_SHA
 # Filter files (Whitelisting): Remove files containing _sc _vcd, followed by . or _
 rm -rf "$VERILATOR_SHARE"/*_sc[._]* "$VERILATOR_SHARE"/*_vcd[._]*
 
-# Apply patches in verilator_share
-echo "=== Applying patches in $VERILATOR_SHARE/ ==="
-for patch_file in "$VERILATOR_SHARE"/*.patch; do
-    if [ -f "$patch_file" ]; then
-        target="${patch_file%.patch}"
-        echo "Applying patch: $patch_file -> $target"
-        # We use -f to force apply even if it seems already applied (e.g. if script rerun)
-        # But actually, since we just copied fresh files from SOURCE_DIR, they are NOT patched yet.
-        patch "$target" < "$patch_file"
-    fi
-done
+# Apply patches in verilator_share if Verilator is not already using fstcpp
+if [ ! -d "${SOURCE_DIR}/fstcpp" ]; then
+    echo "=== Applying patches in $VERILATOR_SHARE/ ==="
+    for patch_file in "$VERILATOR_SHARE"/*.patch; do
+        if [ -f "$patch_file" ]; then
+            target="${patch_file%.patch}"
+            echo "Applying patch: $patch_file -> $target"
+            # We use -f to force apply even if it seems already applied (e.g. if script rerun)
+            # But actually, since we just copied fresh files from SOURCE_DIR, they are NOT patched yet.
+            patch "$target" < "$patch_file"
+        fi
+    done
+fi
 
 echo "=== Generating Verilated files for integration tests ==="
 for test_dir in tests/*; do

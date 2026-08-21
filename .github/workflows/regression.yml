@@ -25,7 +25,7 @@ jobs:
       - name: Setup Verilator
         uses: veryl-lang/setup-verilator@v1
         with:
-          version: '5.044'
+          version: '5.050'
 
       - name: Run tests
         run: ./run_regression.sh --coverage
