@@ -44,6 +44,10 @@ protected:
 		);
 	}
 
+	static const VariableInfo &getVariableInfo(Writer &writer, Handle handle) {
+		return writer.m_value_change_data_.m_variable_infos.at(handle - 1);
+	}
+
 	static void writeHeader(const Header &h, ostream &os) { Writer::writeHeader_(h, os); }
 
 	static void appendBlackout(Writer &Writer, std::ostream &os) { Writer.appendBlackout_(os); }
@@ -276,6 +280,31 @@ TEST_F(WriterTest, createVarVcdReal) {
 	// Type: 0x1a, Direction: 0x01, Name: "real_val", bitwidth: 0x08,  Alias: 0x00
 	const string expected{"\x03\x01real_val\x00\x08\x00"s};
 	EXPECT_EQ(buf, expected);
+}
+
+TEST_F(WriterTest, createVarSvShortreal) {
+	Writer writer;
+	writer.setWriterPackType(WriterPackType::NO_COMPRESSION);
+	const Handle handle{writer.createVar(
+		fst::Hierarchy::VarType::SV_SHORTREAL,
+		fst::Hierarchy::VarDirection::INPUT,
+		/*bitwidth =*/32,
+		"shortreal_val",
+		/*alias handle =*/0
+	)};
+	EXPECT_EQ(handle, 1u);
+
+	// Preserve the 32-bit shortreal width in the hierarchy.
+	const string hierarchy_buf{getHierarchyBuffer(writer)};
+	const string hierarchy_expected{"\x1d\x01shortreal_val\x00\x20\x00"s};
+	EXPECT_EQ(hierarchy_buf, hierarchy_expected);
+
+	// FST stores real values as doubles, including shortreal values promoted to double.
+	const string geometry_buf{getGeometryBuffer(writer)};
+	EXPECT_EQ(geometry_buf, "\x00"s);
+	const VariableInfo &variable_info{getVariableInfo(writer, handle)};
+	EXPECT_TRUE(variable_info.is_real());
+	EXPECT_EQ(variable_info.bitwidth(), 8u);
 }
 
 TEST_F(WriterTest, GeometryBufferNormalVar) {
