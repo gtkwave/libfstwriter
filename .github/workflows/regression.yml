@@ -12,6 +12,8 @@ jobs:
   regression:
     name: Build and Run Regression
     runs-on: ubuntu-latest
+    container:
+      image: verilator/verilator:v5.050
 
     steps:
       - name: Checkout repository
@@ -19,13 +21,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtest-dev lcov liblz4-dev
-
-      - name: Setup Verilator
-        uses: veryl-lang/setup-verilator@v1
-        with:
-          version: '5.050'
+          apt-get update
+          apt-get install -y cmake ninja-build libgtest-dev lcov liblz4-dev patch
 
       - name: Run tests
         run: ./run_regression.sh --coverage

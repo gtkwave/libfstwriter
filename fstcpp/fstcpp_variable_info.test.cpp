@@ -63,7 +63,7 @@ TEST(VariableInfoTest, writeInitialVerilog_ScalarInt) {
 	vi.keepOnlyTheLatestValue();
 	vector<uint8_t> buf{};
 	vi.dumpInitialBits(buf);
-	EXPECT_EQ(V2S(buf), "10xz");
+	EXPECT_EQ(V2S(buf), "10zx");
 }
 
 TEST(VariableInfoTest, writeInitialVerilog_ScalarInt64) {
@@ -73,17 +73,17 @@ TEST(VariableInfoTest, writeInitialVerilog_ScalarInt64) {
 	vi.keepOnlyTheLatestValue();
 	vector<uint8_t> buf{};
 	vi.dumpInitialBits(buf);
-	EXPECT_EQ(V2S(buf), std::string(60, '0') + "10xz");
+	EXPECT_EQ(V2S(buf), std::string(60, '0') + "10zx");
 }
 
 TEST(VariableInfoTest, writeInitialVerilog_LongInt) {
 	VariableInfo vi{70};
-	const uint32_t val[] = {0, 0, 0b1010, 0b0011, 0, 0};
+	const uint32_t val[] = {0, 0b1010, 0, 0, 0b0011, 0};
 	vi.emitValueChange(0, val, fst::EncodingType::VERILOG);
 	vi.keepOnlyTheLatestValue();
 	vector<uint8_t> buf{};
 	vi.dumpInitialBits(buf);
-	const string expected{string(34, '0') + "10xz" + string(32, '0')};
+	const string expected{string(34, '0') + "10zx" + string(32, '0')};
 	EXPECT_EQ(V2S(buf), expected);
 }
 /////////////////////////////
@@ -167,10 +167,10 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_1bit_Verilog) {
 	// Encoding time_index_delta << 2 | (bit << 1) | 0 in binary mode
 	// (1-0) << 2 | 0b00
 	// (2-1) << 2 | 0b10
-	// (3-2) << 4 | 0b01
-	// (4-3) << 4 | 0b11
+	// (3-2) << 4 | 0b11
+	// (4-3) << 4 | 0b01
 	// (5-4) << 2 | 0b00
-	EXPECT_EQ(V2S(buf), "\x04\x06\x11\x13\x04"s);
+	EXPECT_EQ(V2S(buf), "\x04\x06\x13\x11\x04"s);
 }
 
 TEST(VariableInfoTest, dumpValueChange_ScalarInt_2bit_Verilog) {
@@ -213,11 +213,11 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_2bit_Verilog) {
 	vi.dumpValueChanges(buf);
 	// 1. Varint encoding of (Time_index_delta << 1) | 1
 	// 2. Data encoding as chars
-	EXPECT_EQ(buf, (std::vector<uint8_t>{0x03, '0', '0', 0x05, '0', 'z', 0x05, 'z', 'z',
-										 0x05, 'z', '0', 0x07, 'z', '1', 0x03, 'z', 'x',
-										 0x05, '0', 'x', 0x05, '0', '1', 0x05, '1', '1',
-										 0x07, '1', 'x', 0x03, 'x', 'x', 0x05, 'x', '1',
-										 0x05, 'x', '0', 0x05, 'x', 'z', 0x07, '1', 'z',
+	EXPECT_EQ(buf, (std::vector<uint8_t>{0x03, '0', '0', 0x05, '0', 'x', 0x05, 'x', 'x',
+										 0x05, 'x', '0', 0x07, 'x', '1', 0x03, 'x', 'z',
+										 0x05, '0', 'z', 0x05, '0', '1', 0x05, '1', '1',
+										 0x07, '1', 'z', 0x03, 'z', 'z', 0x05, 'z', '1',
+										 0x05, 'z', '0', 0x05, 'z', 'x', 0x07, '1', 'x',
 										 0x03, '1', '0', 0x05, '0', '0'}));
 }
 
@@ -241,8 +241,8 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_10bit_Verilog) {
 	// 2. data encoded as raw bits,aligned with MSB and packed into a whole number of bytes
 	EXPECT_EQ(buf, (std::vector<uint8_t>{0x03, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
 										 0x05, '0', '0', '0', '0', '0', '0', '0', '0', '0', '1',
-										 0x05, '0', '0', '0', '0', '0', '0', '0', 'z', '0', 'x',
-										 0x05, '0', '0', '0', '0', '1', '0', '0', 'x', '0', 'x',
+										 0x05, '0', '0', '0', '0', '0', '0', '0', 'x', '0', 'z',
+										 0x05, '0', '0', '0', '0', '1', '0', '0', 'z', '0', 'z',
 										 0x03, '0', '0', '0', '0', '1', '0', '0', '1', '0', '1',
 										 0x05, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'}));
 }
@@ -255,7 +255,7 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_64bit_Verilog) {
 	vi.dumpValueChanges(buf);
 	// 1. Varint encoding of Time_index_delta << 1 | 1 since it contains only 0 and 1
 	// 2. data encoded as raw bits,aligned with MSB and packed into a whole number of bytes
-	EXPECT_EQ(V2S(buf), "\x03"s + std::string(61, '0') + "1zx");
+	EXPECT_EQ(V2S(buf), "\x03"s + std::string(61, '0') + "1xz");
 }
 
 TEST(VariableInfoTest, dumpValueChange_ScalarInt_64bit_Verilog2) {
@@ -266,25 +266,75 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_64bit_Verilog2) {
 	vi.dumpValueChanges(buf);
 	// 1. Varint encoding of Time_index_delta << 1 | 1 since it contains only 0 and 1
 	// 2. data encoded as raw bits,aligned with MSB and packed into a whole number of bytes
-	EXPECT_EQ(V2S(buf), "\x03"s + std::string(61, '0') + "1zx");
+	EXPECT_EQ(V2S(buf), "\x03"s + std::string(61, '0') + "1xz");
 }
 
 TEST(VariableInfoTest, dumpValueChange_LongInt_Verilog) {
 	VariableInfo vi{68};
 	uint32_t val[] = {0, 0, 0, 0, 0, 0};
 	vi.emitValueChange(2, val, fst::EncodingType::VERILOG);
-	val[2] = 0b0101;
-	val[3] = 0b0011;
+	val[1] = 0b0101;
+	val[4] = 0b0011;
 	vi.emitValueChange(5, val, fst::EncodingType::VERILOG);
 	vector<uint8_t> buf{};
 	vi.dumpValueChanges(buf);
 	std::vector<uint8_t> result(138, '0');
 	result[0] = 0x05;
 	result[69] = 0x07;
-	result[105] = 'x';
-	result[104] = 'z';
+	result[105] = 'z';
+	result[104] = 'x';
 	result[103] = '1';
 	EXPECT_EQ(buf, result);
+}
+
+TEST(VariableInfoTest, writeInitialBits_LongInt_Verilog) {
+	VariableInfo vi{70};
+	// clang-format off
+	uint64_t val70_xz[4] = {
+		0x0000000000000005ULL, 0x00ULL,  // b0
+		0x0000000000000003ULL, 0x30ULL   // b1
+	};
+	// clang-format on
+	vi.emitValueChange(0, val70_xz, fst::EncodingType::VERILOG);
+	vi.keepOnlyTheLatestValue();
+	vector<uint8_t> buf{};
+	vi.dumpInitialBits(buf);
+	const string expected = "xx" + string(65, '0') + "1xz";
+	EXPECT_EQ(V2S(buf), expected);
+}
+
+TEST(VariableInfoTest, dumpValueChange_LongInt_Verilog_uint64_array) {
+	VariableInfo vi{70};
+	// clang-format off
+	uint64_t val70_xz[4] = {
+		0x0000000000000005ULL, 0x00ULL,  // b0
+		0x0000000000000003ULL, 0x30ULL   // b1
+	};
+	// clang-format on
+	vi.emitValueChange(1, val70_xz, fst::EncodingType::VERILOG);
+
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+
+	const string expected = "\x03"s + "xx" + string(65, '0') + "1xz";
+	EXPECT_EQ(V2S(buf), expected);
+}
+
+TEST(VariableInfoTest, dumpValueChange_LongInt_Verilog_uint32_array) {
+	VariableInfo vi{70};
+	// clang-format off
+	uint32_t val70_u32[6] = {
+		0x00000005, 0x00000000, 0x00000000,  // b0
+		0x00000003, 0x00000000, 0x00000030   // b1
+	};
+	// clang-format on
+	vi.emitValueChange(2, val70_u32, fst::EncodingType::VERILOG);
+
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+
+	const string expected = "\x05"s + "xx" + string(65, '0') + "1xz";
+	EXPECT_EQ(V2S(buf), expected);
 }
 
 // LCOV_EXCL_START

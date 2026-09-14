@@ -90,7 +90,7 @@ static inline constexpr unsigned bitPerEncodedBit(EncodingType type) {
 [[maybe_unused]]
 static const char* kEncodedBitToCharTable = (
 	"01" // Binary
-	"zxhu" // Verilog
+	"xzhu" // Verilog
 	"wl-?    " // Vhdl (padded with ' ')
 );
 

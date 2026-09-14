@@ -533,8 +533,8 @@ public:
 						// clang-format off
 					case 0: delta_time_index = (delta_time_index<<2) | (0<<1) | 0; break; // '0'
 					case 1: delta_time_index = (delta_time_index<<2) | (1<<1) | 0; break; // '1'
-					case 2: delta_time_index = (delta_time_index<<4) | (1<<1) | 1; break; // 'Z'
-					case 3: delta_time_index = (delta_time_index<<4) | (0<<1) | 1; break; // 'X'
+					case 2: delta_time_index = (delta_time_index<<4) | (0<<1) | 1; break; // 'X'
+					case 3: delta_time_index = (delta_time_index<<4) | (1<<1) | 1; break; // 'Z'
 					// Not supporting VHDL now
 					// LCOV_EXCL_START
 					case 4: delta_time_index = (delta_time_index<<4) | (2<<1) | 1; break; // 'H'
@@ -603,20 +603,11 @@ public:
 	VariableInfoLongInt(VariableInfo &info_) : info(info_) {}
 
 public:
-	size_t computeBytesNeededNoHeader(EncodingType encoding) const {
-		switch (encoding) {
-		case EncodingType::BINARY:
-			return num_words() * sizeof(uint64_t);
-		case EncodingType::VERILOG:
-			return num_words32() * sizeof(uint32_t) * 2;
-		[[unlikely]] case EncodingType::VHDL:
-			FST_FAIL_STRING("VHDL format is unsupported with wide values");
-		}
-		FST_UNREACHABLE;
-	}
-
 	size_t computeBytesNeeded(EncodingType encoding) const {
-		return kEmitTimeIndexAndEncodingSize + computeBytesNeededNoHeader(encoding);
+		return (
+			kEmitTimeIndexAndEncodingSize +
+			num_words() * sizeof(uint64_t) * bitPerEncodedBit(encoding)
+		);
 	}
 
 	EmitWriterHelper emitValueChangeCommonPart(uint64_t current_time_index, EncodingType encoding) {
@@ -634,12 +625,13 @@ public:
 
 public:
 	void construct() {
-		const size_t nw = num_words32();
+		const size_t nw = num_words();
 		info.resize(computeBytesNeeded(EncodingType::VERILOG));
 		EmitWriterHelper wh(info.data_ptr());
 		wh  //
 			.writeTimeIndexAndEncoding(0, EncodingType::VERILOG)
-			.fill(static_cast<uint64_t>(std::numeric_limits<uint32_t>::max()) << 32, nw);
+			.fill(uint64_t(0), nw)
+			.fill(uint64_t(-1), nw);
 	}
 
 	void emitValueChange(uint64_t current_time_index, const uint64_t val) {
@@ -650,11 +642,11 @@ public:
 
 	void emitValueChange(uint64_t current_time_index, const uint32_t *val, EncodingType encoding) {
 		const unsigned nw32 = num_words32();
+		const unsigned bpb = bitPerEncodedBit(encoding);
 
 		auto wh = emitValueChangeCommonPart(current_time_index, encoding);
 
-		switch (encoding) {
-		case EncodingType::BINARY: {
+		for (unsigned i = 0; i < bpb; ++i) {
 			for (unsigned j = 0; j < nw32 / 2; ++j) {
 				uint64_t v = val[1];  // high bits
 				v <<= 32;
@@ -667,25 +659,13 @@ public:
 				wh.write(v);
 				val += 1;
 			}
-		} break;
-		case EncodingType::VERILOG: {
-			for (unsigned j = 0; j < nw32; ++j) {
-				uint64_t v = val[1];  // high bits
-				v <<= 32;
-				v |= val[0];  // low bits
-				wh.write(v);
-				val += 2;
-			}
-		} break;
-		[[unlikely]] case EncodingType::VHDL:
-			FST_FAIL_STRING("VHDL format is unsupported with wide values");
 		}
 	}
 
 	void emitValueChange(uint64_t current_time_index, const uint64_t *val, EncodingType encoding) {
+		const unsigned nw_encoded = num_words() * bitPerEncodedBit(encoding);
 		auto wh = emitValueChangeCommonPart(current_time_index, encoding);
-		FST_CHECK(encoding == EncodingType::BINARY);
-		wh.write(val, num_words());
+		wh.write(val, nw_encoded);
 	}
 
 	void dumpInitialBits(std::vector<uint8_t> &buf) const {
@@ -708,16 +688,15 @@ public:
 			break;
 		}
 		case EncodingType::VERILOG: {
-			for (unsigned word_index = num_words32(); word_index-- > 0;) {
-				const uint64_t val = rh.peek<uint64_t>(word_index);
-				const uint32_t aval = static_cast<uint32_t>(val);
-				const uint32_t bval = static_cast<uint32_t>(val >> 32);
+			for (unsigned word_index = nw; word_index-- > 0;) {
+				const uint64_t v0 = rh.peek<uint64_t>(nw * 0 + word_index);
+				const uint64_t v1 = rh.peek<uint64_t>(nw * 1 + word_index);
 				const unsigned num_bit =
-					(word_index * 32 + 32 > info.bitwidth()) ? (info.bitwidth() % 32) : 32;
+					(word_index * 64 + 64 > info.bitwidth()) ? (info.bitwidth() % 64) : 64;
 				for (unsigned bit_index = num_bit; bit_index-- > 0;) {
-					const bool a = ((aval >> bit_index) & 1);
-					const bool b = ((bval >> bit_index) & 1);
-					const char c = kEncodedBitToCharTable[(b << 1) | a];
+					const bool b0 = ((v0 >> bit_index) & uint64_t(1));
+					const bool b1 = ((v1 >> bit_index) & uint64_t(1));
+					const char c = kEncodedBitToCharTable[(b1 << 1) | b0];
 					buf.push_back(c);
 				}
 			}
@@ -763,7 +742,8 @@ public:
 			FST_DCHECK_GT(tail, rh.ptr);
 			const auto time_index = rh.read<uint64_t>();
 			const auto enc = rh.read<EncodingType>();
-			const auto num_byte = computeBytesNeededNoHeader(enc);
+			const auto num_element = bitPerEncodedBit(enc);
+			const auto num_byte = num_element * nw * sizeof(uint64_t);
 			if (first) {
 				// Note: [0] is initial value, which is already dumped in dumpInitialBits()
 				first = false;
@@ -793,22 +773,16 @@ public:
 				} break;
 				case EncodingType::VERILOG: {
 					h.writeLEB128((delta_time_index << 1) | 1);
-					const int fullWords = (bitwidth / 32);
-					if (int j = bitwidth % 32) {
-						const uint64_t val = rh.peek<uint64_t>(fullWords);
-						while (j > 0) {
-							--j;
-							const uint64_t v = val >> j;
-							h.writeUIntBE(kEncodedBitToCharTable[((v >> 31) & 2) | (v & 1)]);
-						}
-					}
-					for (size_t i = fullWords; i > 0;) {
-						--i;
-						const uint64_t val = rh.peek<uint64_t>(i);
-						for (int j = 32; j > 0;) {
-							--j;
-							const uint64_t v = val >> j;
-							h.writeUIntBE(kEncodedBitToCharTable[((v >> 31) & 2) | (v & 1)]);
+					for (unsigned word_index = nw; word_index-- > 0;) {
+						const uint64_t v0 = rh.peek<uint64_t>(nw * 0 + word_index);
+						const uint64_t v1 = rh.peek<uint64_t>(nw * 1 + word_index);
+						const unsigned num_bit =
+							(word_index * 64 + 64 > bitwidth) ? (bitwidth % 64) : 64;
+						for (unsigned bit_index = num_bit; bit_index-- > 0;) {
+							const bool b0 = ((v0 >> bit_index) & uint64_t(1));
+							const bool b1 = ((v1 >> bit_index) & uint64_t(1));
+							const char c = kEncodedBitToCharTable[(b1 << 1) | b0];
+							h.write(c);
 						}
 					}
 				} break;

@@ -266,57 +266,64 @@ void Writer::emitValueChange(Handle handle, const char *val) {
 		return;
 	}
 
-	// For normal integer handles, const char* is "01xz..." (1B per bit)
 	const uint32_t bitwidth{var_info.bitwidth()};
-	const bool hasXZ =  // Detects A-Z and a-z but not 0-9 and NOT `-` `?`
-		(std::accumulate(val, val + bitwidth, 0, [](int a, char b) { return a | b; }) & (1 << 6)) !=
-		0;
 	FST_DCHECK_NE(bitwidth, 0);
+
+	const bool has_non_binary =
+		std::any_of(val, val + bitwidth, [](const char c) { return c != '0' && c != '1'; });
 
 	val += bitwidth;
 	const unsigned num_words{(bitwidth + 63) / 64};
-	m_packed_value_buffer_.assign(num_words << (hasXZ ? 1 : 0), 0);
-	for (unsigned i = 0; i < num_words; ++i) {
-		const char *start{val - std::min((i + 1) * 64, bitwidth)};
-		const char *end{val - 64 * i};
-		m_packed_value_buffer_[i] = 0;
-		for (const char *p = start; p < end; ++p) {
-			// No checking for invalid characters, follow original C implementation
-			if (hasXZ) {
-				const size_t j = i << 1;
-				m_packed_value_buffer_[j] <<= 1;
-				m_packed_value_buffer_[j | 1] <<= 1;
-				switch (*p) {
-				case '0':
-					break;
-				case '1': {
-					m_packed_value_buffer_[i] |= 1;
-				} break;
-				case 'X':
-				case 'x': {
-					m_packed_value_buffer_[i] |= 1;
-				}  // FALLTHROUGH
-				case 'Z':
-				case 'z': {
-					m_packed_value_buffer_[j | 1] |= 1;
-				} break;
-				[[unlikely]] default: { FST_FAIL_STRING("Unexpected char"); } break;
-				}
-			} else {
+
+	if (!has_non_binary) {
+		m_packed_value_buffer_.assign(num_words, 0);
+		for (unsigned i = 0; i < num_words; ++i) {
+			const char *start{val - std::min((i + 1) * 64, bitwidth)};
+			const char *end{val - 64 * i};
+			m_packed_value_buffer_[i] = 0;
+			for (const char *p = start; p < end; ++p) {
 				m_packed_value_buffer_[i] <<= 1;
 				m_packed_value_buffer_[i] |= static_cast<uint64_t>(*p - '0');
 			}
 		}
-	}
 
-	if (bitwidth <= 64 && !hasXZ) {
-		emitValueChange(handle, m_packed_value_buffer_.front());
+		if (bitwidth <= 64) {
+			emitValueChange(handle, m_packed_value_buffer_.front());
+		} else {
+			emitValueChange(handle, m_packed_value_buffer_.data(), EncodingType::BINARY);
+		}
 	} else {
-		emitValueChange(
-			handle,
-			m_packed_value_buffer_.data(),
-			hasXZ ? EncodingType::VERILOG : EncodingType::BINARY
-		);
+		m_packed_value_buffer_.assign(num_words * 2, 0);
+		uint64_t *b0_ptr = m_packed_value_buffer_.data();
+		uint64_t *b1_ptr = m_packed_value_buffer_.data() + num_words;
+
+		for (unsigned i = 0; i < num_words; ++i) {
+			const char *start{val - std::min((i + 1) * 64, bitwidth)};
+			const char *end{val - 64 * i};
+			uint64_t b0 = 0;
+			uint64_t b1 = 0;
+			for (const char *p = start; p < end; ++p) {
+				b0 <<= 1;
+				b1 <<= 1;
+				char c = *p;
+				if (c == '1') {
+					b0 |= 1;
+				} else if (c == 'x' || c == 'X') {
+					b1 |= 1;
+				} else if (
+					c == 'z' || c == 'Z' || c == 'h' || c == 'H' || c == 'l' || c == 'L' ||
+					c == 'u' || c == 'U' || c == 'w' || c == 'W'
+				) {
+					// VHDL is not supported yet, treat VHDL-only values as Verilog 'z'
+					b0 |= 1;
+					b1 |= 1;
+				}
+			}
+			b0_ptr[i] = b0;
+			b1_ptr[i] = b1;
+		}
+
+		emitValueChange(handle, m_packed_value_buffer_.data(), EncodingType::VERILOG);
 	}
 }
 
