@@ -28,6 +28,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 function SetupVerilator() {
+	git submodule update --init --recursive || return 1
 	echo "Setting up Verilator runtime..."
 	chmod +x integration_test/setup_runtime.sh
 	./integration_test/setup_runtime.sh

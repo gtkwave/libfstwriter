@@ -5,6 +5,11 @@ cd "$(dirname "$(realpath "$0")")"
 
 # Settings
 VERILATOR_SHARE="verilator_share"
+LIBFST_SOURCE="../submodule/libfst/src"
+if [ ! -f "$LIBFST_SOURCE/fstapi.c" ]; then
+    echo "Error: libfst submodule is missing. Run: git submodule update --init --recursive"
+    exit 1
+fi
 
 # Copy Verilator Runtime (you need to install Verilator first)
 echo "=== Copying Verilator Runtime ==="
@@ -44,6 +49,13 @@ if [ ! -d "${SOURCE_DIR}/fstcpp" ]; then
         fi
     done
 fi
+
+echo "=== Preparing libfst reference ==="
+mkdir -p "$VERILATOR_SHARE/gtkwave"
+for source_file in fstapi.c fstapi.h fst_win_unistd.h; do
+    cp "$LIBFST_SOURCE/$source_file" "$VERILATOR_SHARE/gtkwave/"
+done
+patch --batch --fuzz=0 "$VERILATOR_SHARE/gtkwave/fstapi.c" < libfst.patch
 
 echo "=== Generating Verilated files for integration tests ==="
 for test_dir in tests/*; do

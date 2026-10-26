@@ -1,0 +1,15 @@
+--- fstapi.c
++++ fstapi.c
+@@ -42,8 +42,10 @@
+ #endif
+ 
+ #include "fstapi.h"
+-#include "fastlz.h"
+-#include "lz4.h"
++// Disable fastlz
++#define fastlz_decompress(...)
++#define fastlz_compress(a,len,c) len
++#include <lz4.h>
+ #include <errno.h>
+ 
+ #ifndef HAVE_LIBPTHREAD

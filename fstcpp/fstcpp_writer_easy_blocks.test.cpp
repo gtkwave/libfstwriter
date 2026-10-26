@@ -9,7 +9,9 @@
 // C++ standard library headers
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 // Other libraries' .h files.
 #include <gtest/gtest.h>
@@ -48,6 +50,21 @@ protected:
 
 	static void appendBlackout(Writer &Writer, std::ostream &os) { Writer.appendBlackout_(os); }
 };
+
+TEST_F(WriterTest, HeaderDoesNotOverwriteGeometry) {
+	const char *path = "header_reservation_test.fst";
+	Writer writer;
+	writer.open(path);
+	writer.createVar(Hierarchy::VarType::VCD_WIRE, Hierarchy::VarDirection::INPUT, 1, "clk", 0);
+	writer.emitTimeChange(0);
+	writer.close();
+
+	ifstream input(path, ios::binary);
+	input.seekg(kSharedBlockHeaderSize + HeaderInfo::total_size);
+	EXPECT_EQ(input.get(), static_cast<int>(BlockType::GEOMETRY));
+	input.close();
+	std::remove(path);
+}
 
 TEST_F(WriterTest, createVar) {
 	Writer writer;
