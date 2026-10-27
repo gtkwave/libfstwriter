@@ -27,4 +27,5 @@ jobs:
           apt-get install -y cmake ninja-build libgtest-dev lcov liblz4-dev patch
 
       - name: Run tests
-        run: ./run_regression.sh --coverage
+        run: |
+          ./run_regression.sh --coverage
