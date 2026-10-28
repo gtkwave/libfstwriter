@@ -76,6 +76,11 @@ endforeach()
 #######################################
 # Build the integration tests for testing bit-true behavior
 #######################################
+add_executable(fst_block_compare integration_test/fst_block_compare.cpp)
+add_executable(fst_block_compare_test integration_test/fst_block_compare.test.cpp)
+target_link_libraries(fst_block_compare_test PRIVATE GTest::GTest GTest::Main)
+add_test(NAME fst_block_compare_test COMMAND fst_block_compare_test)
+
 # compile verilator_share/*.cpp as an cmake object
 # Non-recursively to exclude gtkwave/ folder
 file(
@@ -104,15 +109,15 @@ foreach(TEST_PATH ${TEST_PATHS})
         add_test(NAME ${TEST_NAME}_c COMMAND ${TEST_NAME}_c ${TEST_NAME}_dump_c.fst)
 
         # C++ executable
-        add_executable(${TEST_NAME}_cpp ${TEST_SRCS} integration_test/verilator_share/gtkwave/fstapi.cpp $<TARGET_OBJECTS:verilator_share>)
+        add_executable(${TEST_NAME}_cpp ${TEST_SRCS} integration_test/fstapi.cpp $<TARGET_OBJECTS:verilator_share>)
         target_link_libraries(${TEST_NAME}_cpp PRIVATE fstcpp)
         target_include_directories(${TEST_NAME}_cpp PRIVATE ${TEST_PATH}/verilated)
         add_test(NAME ${TEST_NAME}_cpp COMMAND ${TEST_NAME}_cpp ${TEST_NAME}_dump_cpp.fst)
 
-        # must be bit-true
+        # Corresponding blocks must be bit-true; different types may move.
         add_test(
             NAME ${TEST_NAME}_compare
-            COMMAND ${CMAKE_COMMAND} -E compare_files ${TEST_NAME}_dump_cpp.fst ${TEST_NAME}_dump_c.fst
+            COMMAND fst_block_compare ${TEST_NAME}_dump_cpp.fst ${TEST_NAME}_dump_c.fst
         )
         set_tests_properties(
             ${TEST_NAME}_compare

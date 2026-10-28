@@ -1,14 +1,5 @@
 --- /usr/share/verilator/include/verilated.h	2026-03-09 03:56:38.000000000 +0800
 +++ verilated.h	2026-03-14 15:54:45.208719599 +0800
-@@ -3,7 +3,7 @@
- //
- // Code available from: https://verilator.org
- //
--// Copyright 2003-2026 by Wilson Snyder. This program is free software; you can
-+// Copyright 2003-2025 by Wilson Snyder. This program is free software; you can
- // redistribute it and/or modify it under the terms of either the GNU
- // Lesser General Public License Version 3 or the Perl Artistic License
- // Version 2.0.
 @@ -37,6 +37,13 @@
  // verilator code.
  #error "verilated.h should only be included in verilated code"

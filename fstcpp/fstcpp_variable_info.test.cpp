@@ -25,6 +25,20 @@ constexpr unsigned kDontCareBitWidth = 1234;
 /////////////////////////////
 // writeInitialBits
 /////////////////////////////
+TEST(VariableInfoTest, DefaultDigitalValueIsUnknown) {
+	for (const unsigned width : {1u, 8u, 16u, 32u, 64u, 65u, 70u, 128u, 129u}) {
+		SCOPED_TRACE(width);
+		VariableInfo vi{width};
+		vector<uint8_t> buf;
+		vi.dumpInitialBits(buf);
+		EXPECT_EQ(V2S(buf), string(width, 'x'));
+		vi.keepOnlyTheLatestValue();
+		buf.clear();
+		vi.dumpInitialBits(buf);
+		EXPECT_EQ(V2S(buf), string(width, 'x'));
+	}
+}
+
 TEST(VariableInfoTest, writeInitialBits_ScalarInt) {
 	VariableInfo vi{4};
 	vi.emitValueChange(0, 0b1010);
