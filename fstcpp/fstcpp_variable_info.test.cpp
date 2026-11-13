@@ -100,6 +100,16 @@ TEST(VariableInfoTest, writeInitialVerilog_LongInt) {
 	const string expected{string(34, '0') + "10xz" + string(32, '0')};
 	EXPECT_EQ(V2S(buf), expected);
 }
+
+TEST(VariableInfoTest, writeInitialVerilog_LongIntFromUint64) {
+	VariableInfo vi{70};
+	const uint64_t val[] = {0b1010, 0b0011, 0, 0};
+	vi.emitValueChange(0, val, fst::EncodingType::VERILOG);
+	vi.keepOnlyTheLatestValue();
+	vector<uint8_t> buf{};
+	vi.dumpInitialBits(buf);
+	EXPECT_EQ(V2S(buf), string(66, '0') + "10xz");
+}
 /////////////////////////////
 // dumpValueChanges
 /////////////////////////////

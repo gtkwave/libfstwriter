@@ -684,8 +684,16 @@ public:
 
 	void emitValueChange(uint64_t current_time_index, const uint64_t *val, EncodingType encoding) {
 		auto wh = emitValueChangeCommonPart(current_time_index, encoding);
-		FST_CHECK(encoding == EncodingType::BINARY);
-		wh.write(val, num_words());
+		if (encoding == EncodingType::BINARY) {
+			wh.write(val, num_words());
+			return;
+		}
+		FST_CHECK(encoding == EncodingType::VERILOG);
+		for (unsigned i = 0; i < num_words32(); ++i) {
+			const uint64_t word = val[(i / 2) * 2] >> ((i % 2) * 32);
+			const uint64_t xz = val[(i / 2) * 2 + 1] >> ((i % 2) * 32);
+			wh.write((xz << 32) | static_cast<uint32_t>(word));
+		}
 	}
 
 	void dumpInitialBits(std::vector<uint8_t> &buf) const {
