@@ -46,6 +46,10 @@ protected:
 		);
 	}
 
+	static const vector<uint64_t> &getPackedValueBuffer(const Writer &writer) {
+		return writer.m_packed_value_buffer_;
+	}
+
 	static void writeHeader(const Header &h, ostream &os) { Writer::writeHeader_(h, os); }
 
 	static void appendBlackout(Writer &Writer, std::ostream &os) { Writer.appendBlackout_(os); }
@@ -63,6 +67,26 @@ TEST_F(WriterTest, HeaderDoesNotOverwriteGeometry) {
 	input.seekg(kSharedBlockHeaderSize + HeaderInfo::total_size);
 	EXPECT_EQ(input.get(), static_cast<int>(BlockType::GEOMETRY));
 	input.close();
+	std::remove(path);
+}
+
+TEST_F(WriterTest, EmitValueChangeWideXZ) {
+	const char *path = "wide_xz_test.fst";
+	const string value = string(63, '0') + 'x' + string(63, '0') + 'z';
+	const vector<uint64_t> expected{0, 1, 1, 1};
+
+	Writer writer;
+	writer.setWriterPackType(WriterPackType::NO_COMPRESSION);
+	writer.open(path);
+	const Handle handle = writer.createVar(
+		Hierarchy::VarType::VCD_WIRE, Hierarchy::VarDirection::INPUT, 128, "wide", 0
+	);
+	writer.emitTimeChange(0);
+	writer.emitValueChange(handle, value.c_str());
+
+	EXPECT_EQ(getPackedValueBuffer(writer), expected);
+	writer.close();
+
 	std::remove(path);
 }
 

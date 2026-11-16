@@ -277,7 +277,6 @@ void Writer::emitValueChange(Handle handle, const char *val) {
 	for (unsigned i = 0; i < num_words; ++i) {
 		const char *start{val - std::min((i + 1) * 64, bitwidth)};
 		const char *end{val - 64 * i};
-		m_packed_value_buffer_[i] = 0;
 		for (const char *p = start; p < end; ++p) {
 			// No checking for invalid characters, follow original C implementation
 			if (hasXZ) {
@@ -288,11 +287,12 @@ void Writer::emitValueChange(Handle handle, const char *val) {
 				case '0':
 					break;
 				case '1': {
-					m_packed_value_buffer_[i] |= 1;
+					m_packed_value_buffer_[j] |= 1;
 				} break;
 				case 'X':
 				case 'x': {
-					m_packed_value_buffer_[i] |= 1;
+					m_packed_value_buffer_[j] |= 1;
+					[[fallthrough]];
 				}  // FALLTHROUGH
 				case 'Z':
 				case 'z': {
