@@ -101,23 +101,25 @@ foreach(TEST_PATH ${TEST_PATHS})
     if(IS_DIRECTORY ${TEST_PATH})
         # compile all *.cpp files in the folder as an executable
         file(GLOB_RECURSE TEST_SRCS ${TEST_PATH}/*.cpp)
+        set(C_FST_PATH "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}_dump_c.fst")
+        set(CPP_FST_PATH "${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}_dump_cpp.fst")
 
         # C executable
         add_executable(${TEST_NAME}_c ${TEST_SRCS} integration_test/verilator_share/gtkwave/fstapi.c $<TARGET_OBJECTS:verilator_share>)
         target_link_libraries(${TEST_NAME}_c PRIVATE fstcpp)
         target_include_directories(${TEST_NAME}_c PRIVATE ${TEST_PATH}/verilated)
-        add_test(NAME ${TEST_NAME}_c COMMAND ${TEST_NAME}_c ${TEST_NAME}_dump_c.fst)
+        add_test(NAME ${TEST_NAME}_c COMMAND ${TEST_NAME}_c ${C_FST_PATH})
 
         # C++ executable
         add_executable(${TEST_NAME}_cpp ${TEST_SRCS} integration_test/fstapi.cpp $<TARGET_OBJECTS:verilator_share>)
         target_link_libraries(${TEST_NAME}_cpp PRIVATE fstcpp)
         target_include_directories(${TEST_NAME}_cpp PRIVATE ${TEST_PATH}/verilated)
-        add_test(NAME ${TEST_NAME}_cpp COMMAND ${TEST_NAME}_cpp ${TEST_NAME}_dump_cpp.fst)
+        add_test(NAME ${TEST_NAME}_cpp COMMAND ${TEST_NAME}_cpp ${CPP_FST_PATH})
 
         # Corresponding blocks must be bit-true; different types may move.
         add_test(
             NAME ${TEST_NAME}_compare
-            COMMAND fst_block_compare ${TEST_NAME}_dump_cpp.fst ${TEST_NAME}_dump_c.fst
+            COMMAND fst_block_compare ${CPP_FST_PATH} ${C_FST_PATH}
         )
         set_tests_properties(
             ${TEST_NAME}_compare

@@ -62,6 +62,7 @@ void ValueChangeData::keepOnlyTheLatestValue() {
 void Writer::open(const string_view_pair name) {
 	FST_CHECK(!m_main_fst_file_.is_open());
 	m_main_fst_file_.open(std::string(name.m_data, name.m_size), std::ios::binary);
+	FST_CHECK(m_main_fst_file_.is_open());
 	// Materialize the header so appending metadata cannot overwrite its reserved space.
 	writeHeader_(m_header_, m_main_fst_file_);
 }
