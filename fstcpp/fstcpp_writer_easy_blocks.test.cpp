@@ -56,7 +56,7 @@ protected:
 };
 
 TEST_F(WriterTest, HeaderDoesNotOverwriteGeometry) {
-	const char *path = "header_reservation_test.fst";
+	const std::string path = ::testing::TempDir() + "libfstwriter_header_reservation_test.fst";
 	Writer writer;
 	writer.open(path);
 	writer.createVar(Hierarchy::VarType::VCD_WIRE, Hierarchy::VarDirection::INPUT, 1, "clk", 0);
@@ -67,11 +67,11 @@ TEST_F(WriterTest, HeaderDoesNotOverwriteGeometry) {
 	input.seekg(kSharedBlockHeaderSize + HeaderInfo::total_size);
 	EXPECT_EQ(input.get(), static_cast<int>(BlockType::GEOMETRY));
 	input.close();
-	std::remove(path);
+	std::remove(path.c_str());
 }
 
 TEST_F(WriterTest, EmitValueChangeWideXZ) {
-	const char *path = "wide_xz_test.fst";
+	const std::string path = ::testing::TempDir() + "libfstwriter_wide_xz_test.fst";
 	const string value = string(63, '0') + 'x' + string(63, '0') + 'z';
 	const vector<uint64_t> expected{0, 1, 1, 1};
 
@@ -87,7 +87,7 @@ TEST_F(WriterTest, EmitValueChangeWideXZ) {
 	EXPECT_EQ(getPackedValueBuffer(writer), expected);
 	writer.close();
 
-	std::remove(path);
+	std::remove(path.c_str());
 }
 
 TEST_F(WriterTest, createVar) {
