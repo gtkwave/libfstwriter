@@ -424,7 +424,7 @@ public:
 	void emitValueChange(uint64_t current_time_index, const uint32_t *val, EncodingType encoding) {
 		auto wh = emitValueChangeCommonPart(current_time_index, encoding);
 		// C++17: replace this with if constexpr
-		if (sizeof(T) == 8) {
+		if (sizeof(T) == 8 && info.bitwidth() > 32) {
 			if (encoding == EncodingType::VERILOG) {
 				uint64_t v = val[2];  // high bits
 				v <<= 32;

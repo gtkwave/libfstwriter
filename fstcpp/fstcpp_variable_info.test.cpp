@@ -6,6 +6,10 @@
 // direct include
 #include "fstcpp/fstcpp_writer.cpp"
 // C system headers
+#if defined(__linux__) || defined(__APPLE__)
+#	include <sys/mman.h>
+#	include <unistd.h>
+#endif
 // C++ standard library headers
 #include <cstring>
 // Other libraries' .h files.
@@ -162,6 +166,56 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_10bit_Binary) {
 	);
 }
 
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_9bit_Uint32_Binary) {
+	VariableInfo vi{9};
+	const uint32_t val[] = {5};
+	vi.emitValueChange(1, val, fst::EncodingType::BINARY);
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+	EXPECT_EQ(V2S(buf), "\x02\x02\x80"s);
+}
+
+// For bitwidth <= 32 the words read beyond the caller's buffer only land in
+// bits that the dump paths discard, so byte-exact assertions cannot expose an
+// out-of-bounds read in a normal build. These tests instead place the buffer
+// at the end of a mapped page: any over-read crosses into an unmapped page
+// and crashes, even without sanitizers.
+#if defined(__linux__) || defined(__APPLE__)
+// Maps one page and explicitly unmaps the following one, so a buffer placed
+// at the end of the first page is guaranteed to be followed by an unmapped
+// region (a one-page mmap alone is not: the kernel may hand out a larger
+// span whose next page is already mapped elsewhere).
+static void *map_page_with_guard() {
+	const long page_size = sysconf(_SC_PAGESIZE);
+	void *base =
+		mmap(nullptr, page_size * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (base == MAP_FAILED) return MAP_FAILED;
+	if (munmap(static_cast<char *>(base) + page_size, page_size) != 0) {
+		return MAP_FAILED;
+	}
+	return base;
+}
+#endif
+
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_9bit_Uint32_Binary_GuardPage) {
+#if defined(__linux__) || defined(__APPLE__)
+	void *page = map_page_with_guard();
+	ASSERT_NE(page, MAP_FAILED);
+	// One-word BINARY buffer ending exactly at the page boundary
+	uint32_t *val =
+		reinterpret_cast<uint32_t *>(static_cast<char *>(page) + sysconf(_SC_PAGESIZE) - 4);
+	*val = 5;
+	VariableInfo vi{9};
+	vi.emitValueChange(1, val, fst::EncodingType::BINARY);
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+	EXPECT_EQ(V2S(buf), "\x02\x02\x80"s);
+	munmap(page, sysconf(_SC_PAGESIZE));
+#else
+	GTEST_SKIP() << "requires mmap";
+#endif
+}
+
 TEST(VariableInfoTest, dumpValueChange_LongInt_Binary) {
 	VariableInfo vi{68};
 	vi.emitValueChange(2, 0);
@@ -269,6 +323,35 @@ TEST(VariableInfoTest, dumpValueChange_ScalarInt_10bit_Verilog) {
 										 0x05, '0', '0', '0', '0', '1', '0', '0', 'x', '0', 'x',
 										 0x03, '0', '0', '0', '0', '1', '0', '0', '1', '0', '1',
 										 0x05, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0'}));
+}
+
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_9bit_Uint32_Verilog) {
+	VariableInfo vi{9};
+	const uint32_t val[] = {5, 3};
+	vi.emitValueChange(1, val, fst::EncodingType::VERILOG);
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+	EXPECT_EQ(V2S(buf), "\x03"s + std::string(6, '0') + "1zx");
+}
+
+TEST(VariableInfoTest, dumpValueChange_ScalarInt_9bit_Uint32_Verilog_GuardPage) {
+#if defined(__linux__) || defined(__APPLE__)
+	void *page = map_page_with_guard();
+	ASSERT_NE(page, MAP_FAILED);
+	// Two-word (A, X/Z plane) VERILOG buffer ending exactly at the page boundary
+	uint32_t *val =
+		reinterpret_cast<uint32_t *>(static_cast<char *>(page) + sysconf(_SC_PAGESIZE) - 8);
+	val[0] = 5;
+	val[1] = 3;
+	VariableInfo vi{9};
+	vi.emitValueChange(1, val, fst::EncodingType::VERILOG);
+	vector<uint8_t> buf{};
+	vi.dumpValueChanges(buf);
+	EXPECT_EQ(V2S(buf), "\x03"s + std::string(6, '0') + "1zx");
+	munmap(page, sysconf(_SC_PAGESIZE));
+#else
+	GTEST_SKIP() << "requires mmap";
+#endif
 }
 
 TEST(VariableInfoTest, dumpValueChange_ScalarInt_64bit_Verilog) {
